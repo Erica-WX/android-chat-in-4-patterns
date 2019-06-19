@@ -23,7 +23,10 @@ public class Mvp0TalkModel implements MessageListener, Mvp0Contract.Model {
     private SocketClient client;
 
     @Setter
-    private Mvp0Contract.Presenter iMvp0TalkPresenter;
+    private Mvp0Contract.Presenter iMvp0TalkTextPresenter;
+
+    @Setter
+    private Mvp0Contract.Presenter iMvp0TalkImagePresenter;
 
     public Mvp0TalkModel() {
         this.client = SocketClient.getClient();
@@ -57,7 +60,8 @@ public class Mvp0TalkModel implements MessageListener, Mvp0Contract.Model {
                     serverSendMessage.getSenderUsername(),
                     serverSendMessage.getMessage()
             ));
-            iMvp0TalkPresenter.receiveMessage(new ClientMessage(serverSendMessage));
+            iMvp0TalkTextPresenter.receiveMessage(new ClientMessage(serverSendMessage));
+            iMvp0TalkImagePresenter.receiveMessage(new ClientMessage(serverSendMessage));
         } else if (message instanceof ErrorMessage) {
             // 接收到服务器的错误消息
             log.severe("Server error: " + ((ErrorMessage) message).getErrorMessage());

@@ -7,7 +7,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -20,13 +19,17 @@ import lombok.extern.java.Log;
 import nju.androidchat.client.ClientMessage;
 import nju.androidchat.client.R;
 import nju.androidchat.client.Utils;
+import nju.androidchat.client.component.ItemImageReceive;
+import nju.androidchat.client.component.ItemImageSend;
 import nju.androidchat.client.component.ItemTextReceive;
 import nju.androidchat.client.component.ItemTextSend;
 import nju.androidchat.client.component.OnRecallMessageRequested;
 
 @Log
 public class Mvp0TalkActivity extends AppCompatActivity implements Mvp0Contract.View, TextView.OnEditorActionListener, OnRecallMessageRequested {
-    private Mvp0Contract.Presenter presenter;
+    private Mvp0Contract.Presenter imagePresenter;
+    private Mvp0Contract.Presenter textPresenter;
+    //private  Mvp0TalkModel mvp0TalkModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,14 +39,20 @@ public class Mvp0TalkActivity extends AppCompatActivity implements Mvp0Contract.
         Mvp0TalkModel mvp0TalkModel = new Mvp0TalkModel();
 
         // Create the presenter
-        this.presenter = new Mvp0TalkPresenter(mvp0TalkModel, this, new ArrayList<>());
-        mvp0TalkModel.setIMvp0TalkPresenter(this.presenter);
+        //this.presenter = new Mvp0TalkPresenter(mvp0TalkModel, this, new ArrayList<>());
+        //this.presenter = new Mvp0TalkTextPresenter(mvp0TalkModel, this, new ArrayList<>());
+        this.imagePresenter = new Mvp0TalkImagePresenter(mvp0TalkModel, this, new ArrayList<>());
+        this.textPresenter = new Mvp0TalkTextPresenter(mvp0TalkModel, this, new ArrayList<>());
+
+        mvp0TalkModel.setIMvp0TalkTextPresenter(this.textPresenter);
+        mvp0TalkModel.setIMvp0TalkImagePresenter(this.imagePresenter);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        presenter.start();
+        imagePresenter.start();
+        textPresenter.start();
     }
 
     @Override
@@ -58,7 +67,7 @@ public class Mvp0TalkActivity extends AppCompatActivity implements Mvp0Contract.
                     for (ClientMessage message : messages) {
                         String text = String.format("%s", message.getMessage());
                         // 如果是自己发的，增加ItemTextSend
-                        if (message.getSenderUsername().equals(this.presenter.getUsername())) {
+                        if (message.getSenderUsername().equals(this.imagePresenter.getUsername()) || message.getSenderUsername().equals(this.textPresenter.getUsername()) ) {
                             content.addView(new ItemTextSend(this, text, message.getMessageId(), this));
                         } else {
                             content.addView(new ItemTextReceive(this, text, message.getMessageId()));
@@ -71,8 +80,42 @@ public class Mvp0TalkActivity extends AppCompatActivity implements Mvp0Contract.
     }
 
     @Override
+    public void showSingleText(ClientMessage message) {
+        runOnUiThread(() -> {
+            LinearLayout content = findViewById(R.id.chat_content);
+
+            String text = String.format("%s", message.getMessage());
+            // 如果是自己发的，增加ItemTextSend
+            if (message.getSenderUsername().equals(this.imagePresenter.getUsername()) || message.getSenderUsername().equals(this.textPresenter.getUsername())) {
+                content.addView(new ItemTextSend(this, text, message.getMessageId(), this));
+            } else {
+                content.addView(new ItemTextReceive(this, text, message.getMessageId()));
+            }
+        });
+    }
+
+    @Override
+    public void showSingleImage(ClientMessage message) {
+        runOnUiThread(() -> {
+            LinearLayout content = findViewById(R.id.chat_content);
+
+            String url = String.format("%s", message.getMessage());
+            // 如果是自己发的，增加ItemTextSend
+            if (message.getSenderUsername().equals(this.imagePresenter.getUsername()) || message.getSenderUsername().equals(this.textPresenter.getUsername())) {
+                log.info("send");
+                content.addView(new ItemImageSend(this, url, message.getMessageId()));
+            } else {
+                log.info("receive");
+                content.addView(new ItemImageReceive(this, url, message.getMessageId()));
+            }
+        });
+    }
+
+
+    @Override
     public void setPresenter(Mvp0Contract.Presenter presenter) {
-        this.presenter = presenter;
+        this.imagePresenter = presenter;
+        this.textPresenter = presenter;
     }
 
     @Override
@@ -100,9 +143,20 @@ public class Mvp0TalkActivity extends AppCompatActivity implements Mvp0Contract.
 
     private void sendText() {
         EditText text = findViewById(R.id.et_content);
-        AsyncTask.execute(() -> {
-            this.presenter.sendMessage(text.getText().toString());
-        });
+        String content = text.getText().toString();
+        if(content.length() > 5 && content.charAt(0) == '!' && content.charAt(1) == '(' && content.charAt(2) == ')' && content.charAt(3) == '[' && content.charAt(content.length() - 1) == ']') {
+
+            AsyncTask.execute(() -> {
+                this.imagePresenter.sendMessage(content.substring(4, content.length()-1));
+            });
+        }else {
+            AsyncTask.execute(() -> {
+                this.textPresenter.sendMessage(content);
+            });
+        }
+        /*AsyncTask.execute(() -> {
+            this.presenter.sendMessage(content);
+        });*/
     }
 
     public void onBtnSendClicked(View v) {
